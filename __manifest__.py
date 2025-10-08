@@ -1,11 +1,11 @@
 {
     'name': 'Sale Order Partner Tag',
     'version': '1.0',
-    'summary': 'Automatyczne generowanie 3-literowych tagów klientów i numeracji zamówień wg tagu.',
-    'author': 'ChatGPT & User',
-    'website': 'https://odoo.com',
+    'summary': 'Dodaje automatyczny TAG do partnera i numerację zamówień według kontrahenta',
+    'author': 'Jarosław Kopacz',
+    'website': 'www.inoxsolution.pl',
     'category': 'Sales',
-    'depends': ['sale_management'],
+    'depends': ['base', 'sale_management'],
     'data': [
         'data/sale_order_sequence.xml',
     ],
