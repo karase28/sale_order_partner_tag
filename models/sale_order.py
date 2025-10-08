@@ -1,39 +1,46 @@
-from odoo import models, api
-from datetime import datetime
+from odoo import models, api, _
 import logging
 
 _logger = logging.getLogger(__name__)
-_logger.warning("✅ sale_order.py został ZAŁADOWANY do Odoo!")
 
 class SaleOrder(models.Model):
-    _inherit = 'sale.order'
+    _inherit = "sale.order"
 
     @api.model
     def create(self, vals):
-        _logger.warning("🟡 CREATE z sale_order_partner_tag: %s", vals)
+        """Nadpisanie tworzenia zamówienia sprzedaży, aby dodać tag klienta do numeru dokumentu."""
         order = super().create(vals)
 
-        # --- jeśli brak partnera, pomijamy numerację ---
+        # --- jeśli nie ma partnera, pomiń ---
         if not order.partner_id:
-            _logger.warning("⚠️ Brak partnera w zamówieniu %s", order.id)
             return order
 
-        # --- pobranie taga klienta ---
-        tag = (order.partner_id.partner_tag or "XXX").upper()
-        now = datetime.now()
-        year = now.strftime("%Y")
-        month = now.strftime("%m")
+        # --- pobierz kolejny numer z sekwencji Odoo ---
+        sequence_number = self.env['ir.sequence'].next_by_code('sale.order')
+        if not sequence_number:
+            _logger.warning("❌ Nie udało się pobrać numeru z ir.sequence (sale.order)")
+            return order
 
-        # --- pobranie następnego numeru z sekwencji ---
-        seq_code = 'sale.order'  # standardowa sekwencja zamówień
-        next_seq = self.env['ir.sequence'].next_by_code(seq_code)
+        # --- pobierz tag klienta (jeśli nie ma, użyj 'XXX') ---
+        partner_tag = order.partner_id.partner_tag or 'XXX'
 
-        if not next_seq:
-            _logger.warning("⚠️ Brak zdefiniowanej sekwencji %s – używam fallbacku", seq_code)
-            next_seq = f"{order.id:05d}"
+        # --- wstaw tag po 'OI_ZAM/' jeśli występuje ---
+        if "OI_ZAM/" in sequence_number:
+            new_name = sequence_number.replace("OI_ZAM/", f"OI_ZAM/{partner_tag}/")
+        else:
+            # Jeśli format jest inny, spróbuj dodać po pierwszym '/' po roku
+            parts = sequence_number.split('/')
+            if len(parts) >= 3:
+                parts.insert(2, partner_tag)
+                new_name = '/'.join(parts)
+            else:
+                new_name = f"{sequence_number}/{partner_tag}"
 
-        # --- budowanie numeru ---
-        order.name = f"{year}/{tag}/{month}/{next_seq}"
-        _logger.warning("🟢 Nadano numer zamówienia: %s", order.name)
+        # --- ustaw nowy numer zamówienia ---
+        order.name = new_name
+
+        # --- logi dla diagnostyki ---
+        _logger.info(f"🟡 Zastępuję numer Odoo własnym formatem dla zamówienia {order.id}")
+        _logger.info(f"🟢 Nadano nowy numer zamówienia: {new_name}")
 
         return order
