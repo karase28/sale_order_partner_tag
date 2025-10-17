@@ -16,25 +16,26 @@ class SaleOrder(models.Model):
             return order
 
         # --- pobierz kolejny numer z sekwencji Odoo ---
-        sequence_number = self.env['ir.sequence'].next_by_code('sale.order')
-        if not sequence_number:
-            _logger.warning("❌ Nie udało się pobrać numeru z ir.sequence (sale.order)")
-            return order
+        # sequence_number = self.env['ir.sequence'].next_by_code('sale.order')
+        # if not sequence_number:
+        #     _logger.warning("❌ Nie udało się pobrać numeru z ir.sequence (sale.order)")
+        #     return order
 
         # --- pobierz tag klienta (jeśli nie ma, użyj 'XXX') ---
         partner_tag = order.partner_id.partner_tag or 'XXX'
+        old_name = order.name
 
         # --- wstaw tag po 'OI_ZAM/' jeśli występuje ---
-        if "OI_ZAM/" in sequence_number:
-            new_name = sequence_number.replace("OI_ZAM/", f"OI_ZAM/{partner_tag}/")
+        if "OI_ZAM/" in old_name:
+            new_name = old_name.replace("OI_ZAM/", f"OI_ZAM/{partner_tag}/")
         else:
             # Jeśli format jest inny, spróbuj dodać po pierwszym '/' po roku
-            parts = sequence_number.split('/')
+            parts = old_name.split('/')
             if len(parts) >= 3:
                 parts.insert(2, partner_tag)
                 new_name = '/'.join(parts)
             else:
-                new_name = f"{sequence_number}/{partner_tag}"
+                new_name = f"{old_name}/{partner_tag}"
 
         # --- ustaw nowy numer zamówienia ---
         order.name = new_name
